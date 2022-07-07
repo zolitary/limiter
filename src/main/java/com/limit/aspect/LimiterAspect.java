@@ -33,6 +33,7 @@ public class LimiterAspect{
 
     private DefaultParameterNameDiscoverer discoverer = new DefaultParameterNameDiscoverer();
 
+    //表达式的解析式
     private ExpressionParser parser = new SpelExpressionParser();
 
     @Pointcut("@annotation(limiter)")
@@ -68,8 +69,13 @@ public class LimiterAspect{
 
         //判断访问次数
         if (redisTemplate.opsForValue().get(redisKey) == null) {
-            //设置过期时间
-            redisTemplate.opsForValue().set(redisKey, 1, limiter.time(), timeUnit);
+            if(limiter.time()==-1){
+                //不设置过期时间
+                redisTemplate.opsForValue().set(redisKey, 1);
+            }else {
+                //设置过期时间
+                redisTemplate.opsForValue().set(redisKey, 1, limiter.time(), timeUnit);
+            }
             log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,1,name);
             return point.proceed();
         }else {
@@ -83,7 +89,11 @@ public class LimiterAspect{
             }else {
                 //访问次数超限
                 Long expire = redisTemplate.getExpire(redisKey, timeUnit);
-                throw new LimitException("访问频繁，请等待[" + expire + "] " + timeUnit.name().toLowerCase() + "再重试");
+                if(expire==-1){
+                    throw new LimitException("访问超限，该资源已不可访问");
+                }else{
+                    throw new LimitException("访问频繁，请等待[" + expire + "] " + timeUnit.name().toLowerCase() + "再重试");
+                }
             }
 
         }
@@ -103,8 +113,9 @@ public class LimiterAspect{
          //获取方法的参数名
          String[] params = discoverer.getParameterNames(method);
 
-         //将参数名与参数值对应起来
+         //表达式的上下文对象
          EvaluationContext context = new StandardEvaluationContext();
+        //将参数名与参数值对应起来
          for (int len = 0; len < params.length; len++) {
                  context.setVariable(params[len], args[len]);
              }

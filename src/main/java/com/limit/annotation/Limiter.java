@@ -12,13 +12,13 @@ public @interface Limiter {
 
 
     //限流的时间
-    long time() default 60;
+    long time();
 
     //时间单位
     TimeUnit timeUnit()  default TimeUnit.SECONDS;
 
     //限流的次数
-    int count() default 5;
+    int count();
 
     //接口的名称,描述接口的功能
     String name() default "limiter";
