@@ -6,12 +6,9 @@ import org.apache.commons.lang3.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.DefaultParameterNameDiscoverer;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.data.redis.core.script.RedisScript;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Pointcut;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
@@ -46,9 +43,11 @@ public class LimiterAspect{
     @Around("pointcut(limiter)")
     public Object aroundMethod(ProceedingJoinPoint point,Limiter limiter) throws Throwable{
 
+        //获取连接点方法
         Method method = this.getMethod(point);
         String redisKey = method.toString();
 
+        //如果redisKey不为空，则根据传入的参数来拼接
         if (StringUtils.isNotBlank(limiter.redisKey())) {
 
             //获取方法的参数值
@@ -62,11 +61,14 @@ public class LimiterAspect{
         }else {
             redisKey+="_common";
         }
+
         TimeUnit timeUnit = limiter.timeUnit();
         int limitAccount=limiter.count();
         String name= limiter.name();
 
+        //判断访问次数
         if (redisTemplate.opsForValue().get(redisKey) == null) {
+            //设置过期时间
             redisTemplate.opsForValue().set(redisKey, 1, limiter.time(), timeUnit);
             log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,1,name);
             return point.proceed();
@@ -74,10 +76,12 @@ public class LimiterAspect{
             int count=(int)redisTemplate.opsForValue().get(redisKey);
             if(count<limitAccount){
                 //count+=1;
+                //访问次数自增
                 redisTemplate.opsForValue().increment(redisKey);
                 log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,count+1,name);
                 return point.proceed();
             }else {
+                //访问次数超限
                 Long expire = redisTemplate.getExpire(redisKey, timeUnit);
                 throw new LimitException("访问频繁，请等待[" + expire + "] " + timeUnit.name().toLowerCase() + "再重试");
             }

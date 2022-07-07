@@ -7,9 +7,6 @@ import java.util.concurrent.TimeUnit;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Limiter {
 
-    //限流的类型
-//    LimitEnums limitType() default LimitEnums.DEFAULT;
-
     //使用SpEL表达式获取redisKey
     String redisKey() default "";
 
