@@ -4,6 +4,7 @@ package com.limit.annotation;
 import com.limit.enums.LimitEnums;
 
 import java.lang.annotation.*;
+import java.util.concurrent.TimeUnit;
 
 @Documented
 @Target(ElementType.METHOD)
@@ -11,23 +12,23 @@ import java.lang.annotation.*;
 public @interface Limiter {
 
     //限流的类型
-    LimitEnums limitType() default LimitEnums.DEFAULT;
+//    LimitEnums limitType() default LimitEnums.DEFAULT;
 
-    //前缀
-    String pre() default "rate";
-
-    //限流的key
-    String key() default "limiter";
+    //使用SpEL表达式获取redisKey
+    String redisKey() default "";
 
 
     //限流的时间
-    int time() default 60;
+    long time() default 60;
+
+    //时间单位
+    TimeUnit timeUnit()  default TimeUnit.SECONDS;
 
     //限流的次数
     int count() default 5;
 
     //接口的名称,描述接口的功能
-    String name() default "";
+    String name() default "limiter";
 
 
 }

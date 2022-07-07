@@ -37,14 +37,4 @@ public class ResponseVo extends HashMap<String, Object> {
         return this;
     }
 
-
-
-
-
-
-//    public ResponseVO code(String status) {
-//        this.put("code", status);
-//        return this;
-//    }
-
 }
