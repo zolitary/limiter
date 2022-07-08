@@ -10,6 +10,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.support.atomic.RedisAtomicInteger;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
@@ -20,6 +21,7 @@ import org.aspectj.lang.annotation.Aspect;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Method;
+import java.time.LocalTime;
 import java.util.concurrent.TimeUnit;
 
 
@@ -33,7 +35,7 @@ public class LimiterAspect{
 
     private DefaultParameterNameDiscoverer discoverer = new DefaultParameterNameDiscoverer();
 
-    //表达式的解析式
+    //表达式的解析器
     private ExpressionParser parser = new SpelExpressionParser();
 
     @Pointcut("@annotation(limiter)")
@@ -63,31 +65,37 @@ public class LimiterAspect{
             redisKey+="_common";
         }
 
+        //限流的时间单位
         TimeUnit timeUnit = limiter.timeUnit();
+        //限制访问次数
         int limitAccount=limiter.count();
         String name= limiter.name();
 
-        //判断访问次数
-        if (redisTemplate.opsForValue().get(redisKey) == null) {
-            if(limiter.time()==-1){
-                //不设置过期时间
-                redisTemplate.opsForValue().set(redisKey, 1);
+        //使用redis原子整型RedisAtomicInteger
+        RedisAtomicInteger atomicCount=new RedisAtomicInteger(redisKey,redisTemplate.getConnectionFactory());
+        //获取当前访问次数
+        int count=atomicCount.getAndIncrement();
+        //如果是首次访问
+        if(count==0){
+            //需要设置过期时间
+            if(limiter.time()!=-1){
+                atomicCount.expire(limiter.time(),timeUnit);
+                log.info("限流配置：key为{}，{} {}内允许访问{}次",redisKey,limiter.time(),timeUnit,limitAccount);
             }else {
-                //设置过期时间
-                redisTemplate.opsForValue().set(redisKey, 1, limiter.time(), timeUnit);
+                //无需设置过期时间
+                log.info("限流配置：key为{}，总共只能允许访问{}次",redisKey,limiter.time(),timeUnit,limitAccount);
             }
+            //输出访问信息
             log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,1,name);
             return point.proceed();
         }else {
-            int count=(int)redisTemplate.opsForValue().get(redisKey);
+            //访问次数未超限，放行并打印信息
             if(count<limitAccount){
-                //count+=1;
-                //访问次数自增
-                redisTemplate.opsForValue().increment(redisKey);
+                //输出访问的信息
                 log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,count+1,name);
                 return point.proceed();
             }else {
-                //访问次数超限
+                //访问次数超限，抛出异常
                 Long expire = redisTemplate.getExpire(redisKey, timeUnit);
                 if(expire==-1){
                     throw new LimitException("访问超限，该资源已不可访问");
@@ -95,8 +103,41 @@ public class LimiterAspect{
                     throw new LimitException("访问频繁，请等待[" + expire + "] " + timeUnit.name().toLowerCase() + "再重试");
                 }
             }
-
         }
+
+        /**
+         * 存在并发问题
+         */
+        //Object nowCount = redisTemplate.opsForValue().get(redisKey);
+        //判断访问次数
+//        if (nowCount==0) {
+//            if(limiter.time()==-1){
+//                //不设置过期时间
+//                redisTemplate.opsForValue().set(redisKey, 1);
+//            }else {
+//                //设置过期时间
+//                redisTemplate.opsForValue().set(redisKey, 1, limiter.time(), timeUnit);
+//            }
+//            log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,1,name);
+//            return point.proceed();
+//        }else {
+//            int count=(int)nowCount;
+//            if(count<limitAccount){
+//                //访问次数自增
+//                redisTemplate.opsForValue().increment(redisKey);
+//                //输出访问的信息
+//                log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,count+1,name);
+//                return point.proceed();
+//            }else {
+//                //访问次数超限
+//                Long expire = redisTemplate.getExpire(redisKey, timeUnit);
+//                if(expire==-1){
+//                    throw new LimitException("访问超限，该资源已不可访问");
+//                }else{
+//                    throw new LimitException("访问频繁，请等待[" + expire + "] " + timeUnit.name().toLowerCase() + "再重试");
+//                }
+//            }
+//        }
 
     }
 

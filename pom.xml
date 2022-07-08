@@ -59,6 +59,8 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <includeSystemScope>true</includeSystemScope>
+                    <skip>true</skip>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -68,10 +70,6 @@
                 </configuration>
             </plugin>
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
         </plugins>
     </build>
 

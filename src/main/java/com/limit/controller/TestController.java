@@ -41,8 +41,8 @@ public class TestController {
 
 
     //访问公共资源的限制，总次数，当注解传入时间为-1时则为总次数的限制
-    @GetMapping("test4")
-    @Limiter(redisKey = "'total'",time = -1,count = 10,name = "总资源")
+    @GetMapping("test55")
+    @Limiter(redisKey = "'total56'",time = -1,count = 10,name = "总资源")
     public ResponseVo test4() {
         return new ResponseVo().success().setMessage("test4访问成功");
     }
