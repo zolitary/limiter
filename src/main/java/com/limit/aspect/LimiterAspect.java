@@ -21,7 +21,6 @@ import org.aspectj.lang.annotation.Aspect;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Method;
-import java.time.LocalTime;
 import java.util.concurrent.TimeUnit;
 
 
@@ -68,8 +67,23 @@ public class LimiterAspect{
         //限流的时间单位
         TimeUnit timeUnit = limiter.timeUnit();
         //限制访问次数
-        int limitAccount=limiter.count();
+        long limitAccount=limiter.count();
         String name= limiter.name();
+        long limitTime=limiter.time();
+
+//        long current=System.currentTimeMillis();
+//        long duringTime=timeUnit.toMillis(limitTime);
+//        Long count=redisTemplate.opsForZSet().count(redisKey,current-duringTime,current);
+//        redisTemplate.opsForZSet().removeRangeByScore(redisKey, 0, current - duringTime - 1f);
+//        if (count != null && count >= limitAccount) {
+//            throw new LimitException("访问频繁，请稍候再重试");
+//        } else {
+//            redisTemplate.opsForZSet().add(redisKey, UUID.randomUUID().toString(), current);
+//            //输出访问信息
+//            log.info("key为：{},第{}次访问名字为【{}】的接口",redisKey,count+1,name);
+//            return point.proceed();
+//        }
+
 
         //使用redis原子整型RedisAtomicInteger
         RedisAtomicInteger atomicCount=new RedisAtomicInteger(redisKey,redisTemplate.getConnectionFactory());
